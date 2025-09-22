@@ -50,21 +50,24 @@ import scipy.linalg as sl
 # Returns an array psi[ix, it]
 
 
-def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=200, T=4, Nt=200):
+def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
     Kinetic = -  np.pi/L**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
     I = np.linspace(-L, L,Nx)
     Psi_0T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
-    K_dt = -1j*Kinetic*dt
-    evo_dt = sl.expm(K_dt) 
+    K_dt = 1j*Kinetic*dt
     
     evo_t  = np.eye(Nt)
+    Psi_0T[:,0]=psi0_fun(I)
     
     for i in range(1,Nt):
         ti = dt*i
-        evo_t = evo_t @ evo_dt
-        Psi_0T[:,i]=evo_t @ psi0_fun(I)
+        Vt = -1j*V_fun(I,ti)*ti
+        K_ti = 1j*Kinetic*ti
+        evo_ti = sl.expm(K_ti + Vt) 
+        Psi_0T[:,i]=evo_ti @ Psi_0T[:,0]
+        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
     return Psi_0T
 
 
@@ -103,10 +106,20 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
 
     ani = animation.FuncAnimation(fig=fig, func=update, frames=duration*frames_per_second, interval=1000/frames_per_second)
     return ani
+a=10
+psi0=(lambda x: np.exp(-a*x**2))
+
+L=10; Nx=200; Nt=100
+V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2)
+J = np.linspace(-L,L,Nx)
+psi = dynamics(psi0_fun= psi0,V_fun=V,L=L,T=100,Nt=Nt,Nx=Nx)
 
 
-psi = dynamics()
-plt.plot(psi[:,-1])
-plt.plot(psi[:,1])
+plt.plot(J,V(J,0))
+# plt.plot(J,np.abs(psi[:,-1])**2)
+# plt.plot(J,np.abs(psi[:,1])**2)
+# plt.show()
+
+
+anime = plot_psi(psi,L=L)
 plt.show()
-#plot_psi(psi)

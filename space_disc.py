@@ -7,7 +7,10 @@ import scipy.linalg as sl
 
 ####    definitions du problème
 
-L=2*np.pi; Nx=200; h=1/Nx
+L = 2*np.pi; Nx=200; h=1/Nx
+
+Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx+1)/2)*(Nx%2==1))
+
 I = np.linspace(-L/2,L/2,Nx,endpoint=False)
 K = np.arange(Nx)
 
@@ -15,90 +18,160 @@ K = np.arange(Nx)
 
 def Fourier_coeffs(f):
     c = np.zeros(Nx, dtype='complex')
-    for k in range(Nx):         #boucle sur les coeffs de fouriers
-        for n in range(Nx):     #boucle sur la droite reel
-            z= -(2j*np.pi*k*I[n]/L )
+    for k in range(0,Nx_2):         #boucle sur les coeffs de fouriers
+        print(k)
+        for n in range(0,Nx):     #boucle sur la droite reel
+            z= (-2j*np.pi*k*I[n]/L )
+            c[k] += (f(I[n])*np.exp(z))
+    
+    for k in range(Nx_2,Nx):         #boucle sur les coeffs de fouriers
+        print(k)
+        for n in range(0,Nx):     #boucle sur la droite reel
+            z= (-2j*np.pi*(k-Nx)*I[n]/L )
             c[k] += (f(I[n])*np.exp(z))
     return c
-
-
 
 def derive_Fourier(f,D):
     c = np.zeros(Nx, dtype='complex')
     if(D==0):
-        return Fourier_coeffs(f)
+        c= Fourier_coeffs(f)
     else: 
-        for k in range(Nx):         #boucle sur les coeffs de fouriers
-            for n in range(Nx):     #boucle sur la droite reel
-                z= -(2j*np.pi*k*I[n]/L)
-                c[k] +=(f(I[n])*np.exp(z))   
+        
+        for k in range(0,Nx_2):         #boucle sur les coeffs de fouriers
+            
+            for n in range(0,Nx):       #boucle sur la droite reel
+                z= (2j*np.pi*k*I[n]/L)
+                c[k] +=(f(I[n])*np.exp(z)) 
+            
             for d in range(D):
-                c[k] *=-(2j*np.pi*k/L)*h
-    return 2*c
-
+                c[k] *=(2j*np.pi*k/L)
+            
+        for k in range(Nx_2,Nx):         #boucle sur les coeffs de fouriers
+            for n in range(0,Nx):       #boucle sur la droite reel
+                z= (2j*np.pi*(k-Nx)*I[n]/L)
+                c[k] +=(f(I[n])*np.exp(z))
+                
+            for d in range(D):
+                c[k] *=(2j*np.pi*(k-Nx)/L)
+        return c
+    return np.zeros(Nx)
 
 def Inverse(c):
     P = np.zeros(Nx, dtype='complex')
-    for k in range(0,Nx):
-        arg = (2j*np.pi*I*k)/L 
-        z = c[k]*np.exp(arg)
-        P += z*h
-    return np.real(P)
+    
+    for k in range(0,Nx_2):
+        for n in range(Nx):
+            arg = (2j*np.pi*I[n]*k)/L 
+            z = c[k]*np.exp(arg)
+            P[n] += z
+        
+    for k in range(Nx_2,Nx):
+        for n in range(Nx):
+            arg = (2j*np.pi*I[n]*(k-Nx))/L 
+            z = c[k-Nx]*np.exp(arg)
+            P[n] += z
+        
+    return P*h
 
 
-Kinetic = -2*np.pi/L*2*np.pi/L*sl.dft(Nx,'n') @ sl.dft(Nx)
+Kinetic = (2*np.pi/L)**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
 
-#%%
+
 
 ## fonctions tests
-F = lambda x: np.cos(2*np.pi*x/L)
-G = lambda x: -np.sin(x)
-H = lambda x: -2*np.pi/L * 2*np.pi/L* np.cos(2*np.pi*x/L)
+# F = lambda x: np.cos(2*np.pi*x/L)
+# G = lambda x: -2*np.pi/L* np.sin(x)
+# H = lambda x: -2*np.pi/L * 2*np.pi/L* np.cos(2*np.pi*x/L)
+
 #F = lambda x: x+2*x*x+3
 #G = lambda x: 1+4*x
-#F = lambda x: np.exp(np.cos(2*np.pi*x/L))
+
+F = lambda x: (x<0)*(1+2/L*x) + (x>0)*(1- 2/L*x)
+G = lambda x: 1*(x<0)- 1*(x>0)
+H = lambda x: 1*(x<Nx_2+1)*(x>Nx_2-1)
+
+# F = lambda x: np.exp(np.cos(2*np.pi*x/L))
+# G = lambda x: -(2*np.pi/L) * np.exp(np.cos(2*np.pi*x/L))* np.sin(2*np.pi*x/L)
+# H = lambda x: (2*np.pi/L)**2 * np.exp(np.cos(2*np.pi*x/L))*(np.sin(2*np.pi*x/L)**2 - np.cos(2*np.pi*x/L))
 
 
 ### graphes 
 
 C=Fourier_coeffs(F)
 P = np.fft.fft(F(I))
+IF = Inverse(C)
 
-Pp = derive_Fourier(F,2)
-IFp = Inverse(Pp)
+#Pp = derive_Fourier(F,1)
 
-Kfp = Kinetic@F(I)
+PK,Pp = np.zeros(Nx,dtype='complex'), np.zeros(Nx,dtype='complex')
+PPK,PPp = np.zeros(Nx,dtype='complex'), np.zeros(Nx,dtype='complex')
+
+for k in range(0,Nx): 
+    PK[k] =-(4j*np.pi*h/L)*k*P[k]
+    #Pp[k] =(4j*np.pi*h/L)*k*C[k]
+    PPK[k]=(4j*np.pi*h/L)*(4j*np.pi*h/L)*k *k*P[k]
+    #PPp[k]=(4j*np.pi*h/L)*(4j*np.pi*h/L)*k *k*C[k]
+
+Pp      = derive_Fourier(F, 1)
+PPp     = derive_Fourier(F, 2)
+IFp     = Inverse(Pp)
+IFFp    = Inverse(PPp)
+
+# Kfp = Kinetic@F(I)
+
+#Kfp = -(2*np.pi/L)*K@sl.dft(Nx) @ F(I)
+#KFf = np.real(np.fft.ifft(Kfp))
+
+# plt.plot(I,IFp,'b')
+# #plt.plot(I,KFf,'k')
+# plt.plot(I,G(I),'g')
+# plt.show()
 
 
-plt.plot(I,IFp,'b')
-plt.plot(I,Kfp,'k')
-plt.plot(I,H(I),'g')
+fig, (ax1,ax2,ax3) = plt.subplots(3, 1)
+
+ax1.plot(I,F(I),'b')
+ax2.plot(I,IF,'g')
+ax3.plot(I,np.fft.ifft(P),'r')
+plt.show()
+
+fig, (ax1,ax2,ax3) = plt.subplots(3, 1)
+
+ax1.plot(I,G(I),'b')
+ax2.plot(I,IFp,'g')
+ax3.plot(I,np.fft.ifft(PK),'r')
 plt.show()
 
 
-# fig, (ax1,ax2) = plt.subplots(2, 1)
+fig, (ax1,ax2,ax3) = plt.subplots(3, 1)
 
-# ax1.plot(I,F(I),'b')
-# ax2.plot(I,IF,'g')
-# plt.show()
-
-
-# fig, (ax1,ax2) = plt.subplots(2, 1)
-
-# ax1.plot(np.imag(P),'r')
-# ax2.plot(np.imag(C),'g')
-# plt.show()
+ax1.plot(I,H(I),'b')
+ax2.plot(I,IFFp,'g')
+ax3.plot(I,np.fft.ifft(PPK),'r')
+plt.show()
 
 
-# fig, (ax1,ax2) = plt.subplots(2, 1)
+ph = np.fft.fft(G(I))
+pf = Fourier_coeffs(G)
 
-# ax1.plot(np.real(P),'r')
-# ax2.plot(np.real(C),'g')
-# plt.show()
+fig, (ax1,ax2) = plt.subplots(2, 1)
+
+ax1.plot(np.imag(np.fft.fft(G(I))),'b')
+ax2.plot(np.imag(Pp),'g')
+plt.show()
+
+
+fig, (ax1,ax2) = plt.subplots(2, 1)
+
+ax1.plot(np.real(np.fft.fft(G(I))),'b')
+ax2.plot(np.real(Pp),'g')
+plt.show()
+
+
 #%%
 Nt=100; Nx=100; T=4
 psi0_fun = lambda x: np.exp(-x*x)
-Kinetic = -  np.pi/L**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
+Kinetic = -np.pi/L**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
 I = np.linspace(-L, L,Nx)
 Psi_0T = np.zeros((Nx,Nt), dtype="complex")
 dt = T/Nt
