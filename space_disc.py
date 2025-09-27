@@ -3,19 +3,24 @@ import matplotlib.pyplot as plt
 import numpy.random as npr
 import scipy as sp
 import scipy.linalg as sl
+from scipy.fft import fft
+from scipy.fft import ifft
 
 
 ####    definitions du problème
 
-L = 2; Nx=100; h=1/Nx
+L = 2; Nx=101; h=1/Nx
 
-Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx+1)/2)*(Nx%2==1))
+Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1))
 
 I = np.linspace(-L/2,L/2,Nx,endpoint=False)
 K = np.zeros(Nx)
-K[:Nx_2] = np.arange(0,Nx_2); K[Nx_2:] = np.arange(-Nx_2,0)
+K[:Nx_2] = np.arange(0,Nx_2); 
+
+if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
+else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
+
 K2 = np.arange(0,Nx)
-print(K)
 # print(K)
 ### Fonctions utiles 
 
@@ -81,9 +86,9 @@ def Inverse(c):
 
 
 # fonctions tests
-F = lambda x: np.cos(2*np.pi*x/L)
-G = lambda x: -2*np.pi/L* np.sin(2*np.pi*x/L)
-H = lambda x: -2*np.pi/L * 2*np.pi/L* np.cos(2*np.pi*x/L)
+# F = lambda x: np.cos(2*np.pi*x/L)
+# G = lambda x: -2*np.pi/L* np.sin(2*np.pi*x/L)
+# H = lambda x: -2*np.pi/L * 2*np.pi/L* np.cos(2*np.pi*x/L)
 
 #F = lambda x: x+2*x*x+3
 #G = lambda x: 1+4*x
@@ -96,15 +101,15 @@ H = lambda x: -2*np.pi/L * 2*np.pi/L* np.cos(2*np.pi*x/L)
 # G = lambda x: 6*x**2 +6*x +5
 # H = lambda x: 12*x +6
 
-# F = lambda x: np.exp(np.cos(2*np.pi*x/L))
-# G = lambda x: -(2*np.pi/L) * np.exp(np.cos(2*np.pi*x/L))* np.sin(2*np.pi*x/L)
-# H = lambda x: (2*np.pi/L)**2 * np.exp(np.cos(2*np.pi*x/L))*(np.sin(2*np.pi*x/L)**2 - np.cos(2*np.pi*x/L))
+F = lambda x: np.exp(np.cos(2*np.pi*x/L))
+G = lambda x: -(2*np.pi/L) * np.exp(np.cos(2*np.pi*x/L))* np.sin(2*np.pi*x/L)
+H = lambda x: (2*np.pi/L)**2 * np.exp(np.cos(2*np.pi*x/L))*(np.sin(2*np.pi*x/L)**2 - np.cos(2*np.pi*x/L))
 
 
 ### graphes 
 
 # C=Fourier_coeffs(F)
-# P = np.fft.fft(F(I))
+# P = fft(F(I))
 # IF = Inverse(C)
 
 # #Pp = derive_Fourier(F,1)
@@ -124,21 +129,21 @@ IFp     = Inverse(Pp)
 # IFFp    = Inverse(PPp)
 
 
-K_fft = K * 2 * np.pi/L * sl.dft(Nx)*h 
-
 
 Kinetic = -(2*np.pi/L)**2 *K*K
 
-Kfp = np.fft.ifft(K_fft @ F(I))
+K_fft = ((Kinetic *sl.dft(Nx,'sqrtn'))@sl.dft(Nx,'sqrtn'))
+
+Kfp = np.real(K_fft @F(I))
 
 
-K_plot = np.fft.ifft(Kinetic * np.fft.fft(F(I)))
+K_plot = ifft(Kinetic * fft(F(I)))
 
 # print(Kfp)
 
-# plt.plot(I,K_plot,'b')
+plt.plot(I,K_plot,'b')
 plt.plot(I,Kfp,'k')
-plt.plot(I,G(I),'g')
+plt.plot(I,H(I),'g')
 plt.show()
 
 
@@ -146,14 +151,14 @@ plt.show()
 
 # ax1.plot(I,F(I),'b')
 # ax2.plot(I,IF,'g')
-# ax3.plot(I,np.fft.ifft(P),'r')
+# ax3.plot(I,ifft(P),'r')
 # plt.show()
 
 # fig, (ax1,ax2,ax3) = plt.subplots(3, 1)
 
 # ax1.plot(I,G(I),'b')
 # ax2.plot(I,IFp,'g')
-# ax3.plot(I,np.fft.ifft(PK),'r')
+# ax3.plot(I,ifft(PK),'r')
 # plt.show()
 
 
@@ -161,42 +166,42 @@ plt.show()
 
 # ax1.plot(I,H(I),'b')
 # ax2.plot(I,IFFp,'g')
-# ax3.plot(I,np.fft.ifft(PPK),'r')
+# ax3.plot(I,ifft(PPK),'r')
 # plt.show()
 
 
-# ph = np.fft.fft(G(I))
+# ph = fft(G(I))
 # pf = Fourier_coeffs(G)
 
 # fig, (ax1,ax2) = plt.subplots(2, 1)
 
-# ax1.plot(np.imag(np.fft.fft(G(I))),'b')
+# ax1.plot(np.imag(fft(G(I))),'b')
 # ax2.plot(np.imag(Pp),'g')
 # plt.show()
 
 
 # fig, (ax1,ax2) = plt.subplots(2, 1)
 
-# ax1.plot(np.real(np.fft.fft(G(I))),'b')
+# ax1.plot(np.real(fft(G(I))),'b')
 # ax2.plot(np.real(Pp),'g')
 # plt.show()
 
 
 #%%
-Nt=100; Nx=100; T=4
-psi0_fun = lambda x: np.exp(-x*x)
-Kinetic = -np.pi/L**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
-I = np.linspace(-L, L,Nx)
-Psi_0T = np.zeros((Nx,Nt), dtype="complex")
-dt = T/Nt
-K_dt = -1j*Kinetic*dt
-evo_dt = sl.expm(K_dt) 
+# Nt=100; Nx=100; T=4
+# psi0_fun = lambda x: np.exp(-x*x)
+# Kinetic = -np.pi/L**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
+# I = np.linspace(-L, L,Nx)
+# Psi_0T = np.zeros((Nx,Nt), dtype="complex")
+# dt = T/Nt
+# K_dt = -1j*Kinetic*dt
+# evo_dt = sl.expm(K_dt) 
 
-evo_t  = np.eye(Nt)
+# evo_t  = np.eye(Nt)
 
-for i in range(1,Nt):
-    ti = dt*i
-    evo_t = evo_t @ evo_dt
-    Psi_0T[:,i]=evo_t @ psi0_fun(I)
+# for i in range(1,Nt):
+#     ti = dt*i
+#     evo_t = evo_t @ evo_dt
+#     Psi_0T[:,i]=evo_t @ psi0_fun(I)
 
 # %%
