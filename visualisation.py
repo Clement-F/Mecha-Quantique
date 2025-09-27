@@ -40,7 +40,7 @@ import scipy.linalg as sl
 #     return np.real(P)
 
 
-# Kinetic = -2*np.pi/L*2*np.pi/L*sl.dft(Nx,'n') @ sl.dft(Nx)
+# K_fft = -2*np.pi/L*2*np.pi/L*sl.dft(Nx,'n') @ sl.dft(Nx)
 
 
 # Simulates the SchrÃ¶dinger dynamics iâˆ‚t = -1/2 Ïˆ'' + V(x,t) Ïˆ, with the pseudospectral method
@@ -52,11 +52,21 @@ import scipy.linalg as sl
 
 def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
-    Kinetic = -  np.pi/L**2 *sl.dft(Nx,'n') @ sl.dft(Nx)
+    Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) 
+
+    K = np.zeros(Nx)
+    K[:Nx_2] = np.arange(0,Nx_2); 
+
+    if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
+    else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
+
+    Kinetic = -(2*np.pi/L)**2 *K*K
+    K_fft = (Kinetic *sl.dft(Nx,'sqrtn'))@sl.dft(Nx,'sqrtn')
+
     I = np.linspace(-L, L,Nx)
     Psi_0T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
-    K_dt = 1j*Kinetic*dt
+    K_dt = -1j*K_fft*dt
     
     evo_t  = np.eye(Nt)
     Psi_0T[:,0]=psi0_fun(I)
@@ -64,7 +74,7 @@ def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx
     for i in range(1,Nt):
         ti = dt*i
         Vt = -1j*V_fun(I,ti)*ti
-        K_ti = 1j*Kinetic*ti
+        K_ti = -1j*K_fft*ti
         evo_ti = sl.expm(K_ti + Vt) 
         Psi_0T[:,i]=evo_ti @ Psi_0T[:,0]
         print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
@@ -106,16 +116,16 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
 
     ani = animation.FuncAnimation(fig=fig, func=update, frames=duration*frames_per_second, interval=1000/frames_per_second)
     return ani
-a=10
+a=1
 psi0=(lambda x: np.exp(-a*x**2))
 
-L=10; Nx=200; Nt=100
-V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2)
+L=100; Nx=200; Nt=100
+# V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2)
 J = np.linspace(-L,L,Nx)
-psi = dynamics(psi0_fun= psi0,V_fun=V,L=L,T=100,Nt=Nt,Nx=Nx)
+psi = dynamics()
 
 
-plt.plot(J,V(J,0))
+# plt.plot(J,V(J,0))
 # plt.plot(J,np.abs(psi[:,-1])**2)
 # plt.plot(J,np.abs(psi[:,1])**2)
 # plt.show()
