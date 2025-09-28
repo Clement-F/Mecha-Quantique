@@ -6,43 +6,6 @@ import scipy as sp
 import scipy.linalg as sl
 
 
-
-# def Fourier_coeffs(f):
-#     c = np.zeros(Nx, dtype='complex')
-#     for k in range(Nx):         #boucle sur les coeffs de fouriers
-#         for n in range(Nx):     #boucle sur la droite reel
-#             z= -(2j*np.pi*k*I[n]/L )
-#             c[k] += (f(I[n])*np.exp(z))
-#     return c
-
-
-
-# def derive_Fourier(f,D):
-#     c = np.zeros(Nx, dtype='complex')
-#     if(D==0):
-#         return Fourier_coeffs(f)
-#     else: 
-#         for k in range(Nx):         #boucle sur les coeffs de fouriers
-#             for n in range(Nx):     #boucle sur la droite reel
-#                 z= -(2j*np.pi*k*I[n]/L)
-#                 c[k] +=(f(I[n])*np.exp(z))   
-#             for d in range(D):
-#                 c[k] *=-(2j*np.pi*k/L)*h
-#     return 2*c
-
-
-# def Inverse(c):
-#     P = np.zeros(Nx, dtype='complex')
-#     for k in range(0,Nx):
-#         arg = (2j*np.pi*I*k)/L 
-#         z = c[k]*np.exp(arg)
-#         P += z*h
-#     return np.real(P)
-
-
-# K_fft = -2*np.pi/L*2*np.pi/L*sl.dft(Nx,'n') @ sl.dft(Nx)
-
-
 # Simulates the SchrÃ¶dinger dynamics iâˆ‚t = -1/2 Ïˆ'' + V(x,t) Ïˆ, with the pseudospectral method
 # on an interval [-L,L] with periodic boundary conditions, with Nx grid points
 # The simulation proceeds from 0 to T, with Nt time steps.
@@ -61,29 +24,31 @@ def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx
     else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
 
     Kinetic = -(2*np.pi/L)**2 *K*K
-    K_fft = (Kinetic *sl.dft(Nx,'sqrtn'))@sl.dft(Nx,'sqrtn')
+    K_fft =  -0.5 *(Kinetic *sl.dft(Nx,'sqrtn'))@sl.dft(Nx,'sqrtn')
 
     I = np.linspace(-L, L,Nx)
     Psi_0T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
     K_dt = -1j*K_fft*dt
     
-    evo_t  = np.eye(Nt)
+    # evo_dt  = sl.expm(K_dt)
     Psi_0T[:,0]=psi0_fun(I)
     
     for i in range(1,Nt):
-        ti = dt*i
-        Vt = -1j*V_fun(I,ti)*ti
-        K_ti = -1j*K_fft*ti
-        evo_ti = sl.expm(K_ti + Vt) 
-        Psi_0T[:,i]=evo_ti @ Psi_0T[:,0]
-        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
+        ti =    dt*i
+
+        Vti =    -1j*V_fun(I,ti)*ti;    K_ti =  -1j*K_fft*ti
+        eVti =   np.exp(Vti)      ;    eKti = sl.expm(K_ti)
+        Psi_0T[:,i]=eKti@( eVti * Psi_0T[:,i-1])
+        print(i,ti)
     return Psi_0T
 
 
 # Plots the return value psi of the function "dynamics", using linear interpolation
 # The whole of psi is plotted, in an animation lasting "duration" seconds (duration is unconnected to T)
 # L argument is only for x axis labelling
+
+
 def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     
     fig, ax = plt.subplots()
@@ -100,6 +65,8 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     real_plot = ax.plot(x_data, np.real(psi[:, 0]), label='Real')[0]
     imag_plot = ax.plot(x_data, np.imag(psi[:, 0]), label='Imag')[0]
     abs_plot  = ax.plot(x_data, np.abs(psi[:, 0]), label='Abs')[0]
+    proba_plot = ax.plot(x_data, np.abs(psi[:,0]**2),label ='proba')[0]
+    V_plot = ax.plot(x_data, V(x_data,0), label='potentiel')[0]
     ax.legend()
 
     # define update function as an internal function (that can access the variables defined before)
@@ -113,16 +80,21 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
         real_plot.set_ydata(np.real(psi_t))
         imag_plot.set_ydata(np.imag(psi_t))
         abs_plot.set_ydata(np.abs(psi_t))
+        proba_plot.set_ydata((np.abs(psi_t)**2))
+        V_plot.set_ydata(V(x_data,t))
 
     ani = animation.FuncAnimation(fig=fig, func=update, frames=duration*frames_per_second, interval=1000/frames_per_second)
     return ani
-a=1
-psi0=(lambda x: np.exp(-a*x**2))
 
-L=100; Nx=200; Nt=100
-# V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2)
+a=1
+psi0=(lambda x: np.exp(-a*x*x))
+
+L=10; Nx=200; Nt=200; T=5
+
+V = lambda x,t : 1000*(x>L/2) + 1000*(x<-L/2) -10*(x<=L/2)*(x>=-L/2) # puit d energie
+# V = lambda x,t :10000*(x<=3*L/4)*(x>=L/4)
 J = np.linspace(-L,L,Nx)
-psi = dynamics()
+psi = dynamics(psi0_fun=psi0, V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
 
 
 # plt.plot(J,V(J,0))
@@ -131,5 +103,5 @@ psi = dynamics()
 # plt.show()
 
 
-anime = plot_psi(psi,L=L)
+anime = plot_psi(psi,L=L, duration=20, frames_per_second=60)
 plt.show()
