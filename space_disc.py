@@ -132,7 +132,7 @@ IFp     = Inverse(Pp)
 
 Kinetic = -(2*np.pi/L)**2 *K*K
 
-K_fft = (Kinetic *sl.dft(Nx,'sqrtn'))@sl.dft(Nx,'sqrtn')
+K_fft = (Kinetic * np.conjugate(sl.dft(Nx,'sqrtn')))@sl.dft(Nx,'sqrtn')
 
 Kfp = np.real(K_fft @F(I))
 

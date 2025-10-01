@@ -4,6 +4,8 @@ import numpy as np
 import numpy.random as npr
 import scipy as sp
 import scipy.linalg as sl
+from scipy.fft import fft
+from scipy.fft import ifft
 
 
 
@@ -50,7 +52,7 @@ import scipy.linalg as sl
 # Returns an array psi[ix, it]
 
 
-def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
+def dynamics_Kfft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
     Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) 
 
@@ -60,8 +62,8 @@ def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx
     if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
     else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
 
-    Kinetic = -(2*np.pi/L)**2 *K*K
-    K_fft = (Kinetic *sl.dft(Nx,'sqrtn'))@sl.dft(Nx,'sqrtn')
+    Kinetic = 0.5*(2*np.pi/L)**2 *K*K
+    K_fft = (Kinetic * np.conjugate(sl.dft(Nx,'sqrtn')))@sl.dft(Nx,'sqrtn')
 
     I = np.linspace(-L, L,Nx)
     Psi_0T = np.zeros((Nx,Nt), dtype="complex")
@@ -80,6 +82,35 @@ def dynamics(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx
         print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
     return Psi_0T
 
+
+
+
+def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
+
+    Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) 
+
+    K = np.zeros(Nx)
+    K[:Nx_2] = np.arange(0,Nx_2); 
+
+    if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
+    else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
+
+    Kinetic = 0.5*(2*np.pi/L)**2 *K*K
+    K_fft = (Kinetic * np.conjugate(sl.dft(Nx,'sqrtn')))@sl.dft(Nx,'sqrtn')
+
+    I = np.linspace(-L, L,Nx)
+    Psi_0T = np.zeros((Nx,Nt), dtype="complex")
+    dt = T/Nt
+    K_dt = -1j*K_fft*dt
+    
+    evo_t  = np.eye(Nt)
+    Psi_0T[:,0]=psi0_fun(I)
+    
+    for i in range(1,Nt):
+        ti = dt*i
+        Psi_0T[:,i] = ifft(-1j*Kinetic *ti * fft(Psi_0T[:,0]))
+        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
+    return Psi_0T
 
 # Plots the return value psi of the function "dynamics", using linear interpolation
 # The whole of psi is plotted, in an animation lasting "duration" seconds (duration is unconnected to T)
@@ -119,10 +150,10 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
 a=1
 psi0=(lambda x: np.exp(-a*x**2))
 
-L=100; Nx=200; Nt=100
-# V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2)
+L=10; Nx=100; Nt=100; T=1
+V = lambda x,t : 10000*(x<=-2*L/4) 
 J = np.linspace(-L,L,Nx)
-psi = dynamics()
+psi = dynamics_fft(psi0_fun=psi0,L=L,Nx=Nx,T=T, Nt=Nt)
 
 
 # plt.plot(J,V(J,0))
