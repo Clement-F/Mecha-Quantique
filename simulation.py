@@ -44,9 +44,6 @@ def dynamics_Kfft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=1
         print(i,ti)
     return Psi_0T
 
-
-
-
 def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
     Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) 
@@ -69,9 +66,6 @@ def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10
         Psi_0T[:,i] = ifft((np.exp(-1j*Kinetic*ti)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_0T[:,0]))
         print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
     return Psi_0T
-
-
-
 
 def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
@@ -158,3 +152,4 @@ psi = dynamics_fft_diss(psi0_fun=psi0,V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
 
 anime = plot_psi(psi,L=L, duration=10, frames_per_second=60)
 plt.show()
+
