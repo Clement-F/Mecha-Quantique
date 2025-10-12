@@ -109,8 +109,6 @@ def Projection_red (Nx,Ny,psi,red_x=red_x,red_y=red_y):
             sol_red[int(i/red_x),int(j/red_y)] = psi[i,j]
     return sol_red
 
-
-
 # =============================================================================================
 # =============================================================================================
 
@@ -149,40 +147,45 @@ def dynamics_2D(psi0_fun=(lambda x,y: np.exp(-(x*x+y*y)**2)), V_fun=(lambda x,y,
     Psi_temp[:,:,0]=psi0_fun(I,J); Psi_T[:,:,0]= Projection_red(Nx,Ny,Psi_temp[:,:,0])
     norm = np.sqrt(Lx/Nx)*np.sqrt(Ly/Ny)*np.linalg.norm(Psi_temp[:,:,0])
     
-    diff_Norm = np.zeros(Nt)
+    diff_Norm = np.zeros(Nt); Energie = np.zeros(Nt)
 
     for i in range(1,savefile*Nt):
         ti = dt*i
         Psi_temp[:,:,1]= ifft2((np.exp(-1j*Kinetic*dt)) * fft2(np.exp(-1j*V_fun(I,J,ti)*ti) *Psi_temp[:,:,0]))
         if(i%savefile==0) : 
-            Psi_T[:,:,int(i/savefile)] = Projection_red(Nx,Ny,Psi_temp[:,:,1]); 
-            diff_Norm[int(i/savefile)] = np.log(np.abs(norm -Norme(Nx,Ny,Lx,Ly, Psi_temp[:,:,1])))
-            print(i,diff_Norm[int(i/savefile)])
+            Psi_T[:,:,int(i/savefile)]  = Projection_red(Nx,Ny,Psi_temp[:,:,1]); 
+
+            diff_Norm[int(i/savefile)]  = np.log(np.abs(norm -Norme(Nx,Ny,Lx,Ly, Psi_temp[:,:,1])))
+            Energie[int(i/savefile)]    = np.sqrt(Lx/Nx)*np.sqrt(Ly/Ny)*np.linalg.norm(ifft2( Kinetic * fft2(V_fun(I,J,ti) *Psi_temp[:,:,1])))
+
+            print(i,diff_Norm[int(i/savefile)], Energie[int(i/savefile)])
         Psi_temp[:,:,0] = Psi_temp[:,:,1]
 
-    return Psi_T, diff_Norm
+    return Psi_T, diff_Norm, Energie
 
 
 # ============================================================================================
 
-a=2; kx=0; ky=0; x0=0; y0=0
-# psi0= lambda x,y: np.exp(-a*(x*x + y*y)) *np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))
-psi0 = lambda x,y : 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x + y*y)/(2*a*a))*(1-np.exp(-(x*x + y*y)/(2*a*a)))       # cercle autour de l'origine
+r=1
+a=r*np.sqrt(2*np.log(2)); kx=0; ky=2; x0=1; y0=0
+
+N=400;      L=10
+Lx=L;   Nx=N;   Ly=L;   Ny=N
+L = max(Lx,Ly)
+Nt=2500;     T=25
+l=np.sqrt(25);      V0=1
+psi0= lambda x,y: np.exp(-a*(x*x + y*y)) *np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))
+# psi0 = lambda x,y : 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x + y*y)/(2*a*a))*(1-np.exp(-(x*x + y*y)/(2*a*a)))*np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))       # cercle autour de l'origine
 # psi0= lambda x: np.exp(-a*(x-x0)*(x-x0)) *np.exp(1j*k*(x-x0))
 
 
-N=1000;  L=10
-Lx=L; Nx=N; Ly=L; Ny=N
-L = max(Lx,Ly)
-Nt=500; T=5
-l=10; V0=1000
 
 
-V = lambda x,y,t : V0*((x*x + y*y)>(l/2)**2) -V0*((x*x + y*y)<=(l/2)**2)*((x*x + y*y)>=-(l/2)**2)     # puit d energie
+# V = lambda x,y,t : V0*((x*x + y*y)>(l)**2) -V0*((x*x + y*y)<=(l)**2)*((x*x + y*y)>=-(l)**2)     # puit d energie
 # V = lambda x,y,t : V0*((x*x + y*y)<=(L/2+l)**2)*((x*x+y*y)>=(L/2)**2)  # barriere (effet tunnel)
-# V = lambda x,y,t : -5*V0/np.abs(x*x + y*y) 
+V = lambda x,y,t : -5*V0/np.abs(x*x + y*y) 
 # V = lambda x,y,t : 1*np.cos(2*np.pi*x/L)
-# V = lambda x,y,t : 0 * x * y
+V = lambda x,y,t : 0 * x * y
 
 
 I = np.linspace(-Lx,Lx,Nx); J = np.linspace(-Ly,Ly,Ny).reshape(-1,1); Time = np.arange(0,Nt)
@@ -190,9 +193,10 @@ I = np.linspace(-Lx,Lx,Nx); J = np.linspace(-Ly,Ly,Ny).reshape(-1,1); Time = np.
 fig, ax = plt.subplots()
 im = ax.imshow(V(I,J,0),extent=[-Lx, Lx, -Ly, Ly], animated=True)
 
-psi,diff_norm = dynamics_2D(psi0_fun=psi0,V_fun=V, Lx=Lx,Ly=Ly, Nx=Nx, Ny=Ny, T=T, Nt=Nt)
-anime = plot_psi_2D(psi,Lx=Lx, Ly=Ly, duration=10, frames_per_second=60)
+psi, diff_norm, Ener = dynamics_2D(psi0_fun=psi0,V_fun=V, Lx=Lx,Ly=Ly, Nx=Nx, Ny=Ny, T=T, Nt=Nt)
+anime = plot_psi_2D(psi,Lx=Lx, Ly=Ly, duration=2*T, frames_per_second=60)
 
 plt.show()
 plt.plot(Time, diff_norm)
+plt.plot(Time, Ener)
 plt.show()

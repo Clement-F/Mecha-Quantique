@@ -8,6 +8,30 @@ from scipy.fft import fft
 from scipy.fft import ifft
 
 
+# ============================================================================================
+# ============================================================================================
+
+splin_exp = lambda x: np.exp(-1/x)*(x>0) / (np.exp(-1/x)*(x>0)+ np.exp(-1/(1-x))*(x>0))
+raccord = lambda x,p1,p2,a,b: (1-splin_exp((x-a)/(b-a)))*p1 + splin_exp((x-a)/(b-a))*p2 
+
+def barriere_reg(X,t,x1,x2,epsi):
+    V=np.zeros(X.size)
+
+    for i in range(X.size) :
+        x = X[i]
+
+        if(x<x1-epsi):                      V[i] = 0 
+        elif((x1-epsi<x)  and (x<x1+epsi)): V[i] = raccord(x,0,V0,x1-epsi,x1+epsi)
+        elif((x1+epsi<x)  and (x<x2-epsi)): V[i] = V0
+        elif((x2-epsi<x)  and (x<x2+epsi)): V[i] = raccord(x,V0,0,x2-epsi,x2+epsi)
+        elif(x2+epsi<x):                    V[i] = 0
+
+    return V
+
+
+# ============================================================================================
+# ============================================================================================
+
 # Simulates the SchrÃ¶dinger dynamics iâˆ‚t = -1/2 Ïˆ'' + V(x,t) Ïˆ, with the pseudospectral method
 # on an interval [-L,L] with periodic boundary conditions, with Nx grid points
 # The simulation proceeds from 0 to T, with Nt time steps.
@@ -91,6 +115,10 @@ def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0),
     return Psi_0T
 
 
+# ============================================================================================
+# ============================================================================================
+
+
 # Plots the return value psi of the function "dynamics", using linear interpolation
 # The whole of psi is plotted, in an animation lasting "duration" seconds (duration is unconnected to T)
 # L argument is only for x axis labelling
@@ -100,7 +128,7 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     
     fig, ax = plt.subplots()
     t_data = np.linspace(0, 1, np.size(psi, 1)) # 1 is arbitrary here
-    x_data = np.linspace(-L,L,np.size(psi,0), endpoint=False)
+    x_data = np.linspace(-L,L,np.size(psi,0))
     # set the min and maximum values of the plot, to scale the axis
     m = min(0, np.min(np.real(psi)), np.min(np.imag(psi)))
     M = np.max(np.abs(psi))
@@ -112,6 +140,7 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     real_plot = ax.plot(x_data, np.real(psi[:, 0]), label='Real')[0]
     imag_plot = ax.plot(x_data, np.imag(psi[:, 0]), label='Imag')[0]
     abs_plot  = ax.plot(x_data, np.abs(psi[:, 0]), label='Abs')[0]
+    V_plot  =   ax.plot(x_data, V(x_data,0), label='V')[0]
     ax.legend()
 
     # define update function as an internal function (that can access the variables defined before)
@@ -129,24 +158,34 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     ani = animation.FuncAnimation(fig=fig, func=update, frames=duration*frames_per_second, interval=1000/frames_per_second)
     return ani
 
-a=10
-psi0=(lambda x: np.exp(-a*x*x))
+# ============================================================================================
+# ============================================================================================
 
-L=20; Nx=1000; Nt=10000; T=1
+# r=2
+# a=r*np.sqrt(2*np.log(2)); kx=2; x0=1
+
+a=1.5; kx=2; x0=0
+psi0= lambda x: 1/(np.sqrt(2*np.pi *a*a)) *np.exp(-(x*x)/(2*a*a)) *np.exp(1j*kx*(x-x0))
+# psi0= lambda x: 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x)/(2*a*a))*(1-np.exp(-(x*x)/(2*a*a)))*np.exp(1j*kx*(x-x0))       # cercle autour de l'origine
+
+
+L=10; Nx=8000; Nt=10000; T=10
+l=0.2; s=5; V0=0.5; epsi=l*0.45
+
 
 # V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2) -1*(x<=L/2)*(x>=-L/2)     # puit d energie
-V = lambda x,t : 1*(x<=3*L/4)*(x>=L/4)                            # barriere (effet tunnel)
+# V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (effet tunnel)
+V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
 # V = lambda x,t : 1/np.abs(x)
 # V = lambda x,t : 1*np.cos(2*np.pi*x/L)
 # V = lambda x,t : 0 * x
 
-J = np.linspace(-L,L,Nx)
-psi = dynamics_fft_diss(psi0_fun=psi0,V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
-
-
 # plt.plot(J,V(J,0))
-# plt.plot(J,np.abs(psi[:,-1])**2)
-# plt.plot(J,np.abs(psi[:,1])**2)
+# plt.show()
+
+psi = dynamics_fft_diss(psi0_fun=psi0,V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
+J =np.linspace(-L,L,np.size(psi,0))
+# plt.plot(J,V(J,0))
 # plt.show()
 
 
