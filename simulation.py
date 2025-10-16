@@ -29,6 +29,18 @@ def barriere_reg(X,t,x1,x2,epsi):
     return V
 
 
+def Kin (Nx):
+    
+    Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) +1
+    K = np.zeros((Nx), dtype='complex')
+    for i in range(0,Nx_2-1):
+        K[i] = 0.5*(2*np.pi/L)**2 *i*i
+        print(i)
+    for i in range(Nx_2,Nx-1):
+        K[i] = 0.5*(2*np.pi/L)**2 *(i-Nx)*(i-Nx)
+        print(i)
+    return K
+
 # ============================================================================================
 # ============================================================================================
 
@@ -52,21 +64,21 @@ def dynamics_Kfft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=1
     K_fft = (Kinetic * np.conjugate(sl.dft(Nx,'sqrtn')))@sl.dft(Nx,'sqrtn')
 
     I = np.linspace(-L, L,Nx)
-    Psi_0T = np.zeros((Nx,Nt), dtype="complex")
+    Psi_T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
 
     # K_dt = -1j*K_fft*dt
     # evo_dt  = sl.expm(K_dt)
 
-    Psi_0T[:,0]=psi0_fun(I)
+    Psi_T[:,0]=psi0_fun(I)
     
     for i in range(1,Nt):
         ti =    dt*i
         Vti =    -1j*V_fun(I,ti)*ti;    K_ti =  -1j*K_fft*ti
         eVti =   np.exp(Vti)      ;    eKti = sl.expm(K_ti)
-        Psi_0T[:,i]=eKti@( eVti * Psi_0T[:,0])
+        Psi_T[:,i]=eKti@( eVti * Psi_T[:,0])
         print(i,ti)
-    return Psi_0T
+    return Psi_T
 
 def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
@@ -80,39 +92,44 @@ def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10
 
     Kinetic = 0.5*(2*np.pi/L)**2 *K*K
     I = np.linspace(-L, L,Nx)
-    Psi_0T = np.zeros((Nx,Nt), dtype="complex")
+    Psi_T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
 
-    Psi_0T[:,0]=psi0_fun(I)
+    Psi_T[:,0]=psi0_fun(I)
     
     for i in range(1,Nt):
         ti = dt*i
-        Psi_0T[:,i] = ifft((np.exp(-1j*Kinetic*ti)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_0T[:,0]))
-        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
-    return Psi_0T
+        Psi_T[:,i] = ifft((np.exp(-1j*Kinetic*ti)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_T[:,0]))
+        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_T[:,i]))
+    return Psi_T
 
 def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
     Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) 
 
-    K = np.zeros(Nx)
-    K[:Nx_2] = np.arange(0,Nx_2); 
+    # K = np.zeros(Nx)
+    # K[:Nx_2] = np.arange(0,Nx_2); 
 
-    if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
-    else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
+    # if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
+    # else:   K[Nx_2:] = np.arange(-Nx_2,1)
 
-    Kinetic = 0.5*(2*np.pi/L)**2 *K*K
-    I = np.linspace(-L, L,Nx)
-    Psi_0T = np.zeros((Nx,Nt), dtype="complex")
-    dt = T/Nt
+    dt = T/Nt; dx = L/Nx
+    # Kinetic = (0.5*(2*np.pi/L)**2) *K*K
+    Kinetic = np.fft.fftfreq(Nx, dx)*np.fft.fftfreq(Nx, dx)
+    print(Kinetic)
+    I = np.linspace(-L, L,Nx,endpoint=False)
+    Psi_T = np.zeros((Nx,Nt), dtype="complex")
+    Phi_T = np.zeros((Nx,Nt), dtype="complex")
 
-    Psi_0T[:,0]=psi0_fun(I)
+    Psi_T[:,0]=psi0_fun(I)
+    
     
     for i in range(1,Nt):
         ti = dt*i
-        Psi_0T[:,i] = ifft((np.exp(-1j*Kinetic*dt)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_0T[:,i-1]))
-        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
-    return Psi_0T
+        Phi_T[:,i] = (np.exp(-1j*Kinetic*dt)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_T[:,i-1])
+        Psi_T[:,i] = ifft(Phi_T[:,i])
+        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_T[:,i]))
+    return Psi_T, Phi_T
 
 
 # ============================================================================================
@@ -128,7 +145,7 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     
     fig, ax = plt.subplots()
     t_data = np.linspace(0, 1, np.size(psi, 1)) # 1 is arbitrary here
-    x_data = np.linspace(-L,L,np.size(psi,0))
+    x_data = np.linspace(-L,L,np.size(psi,0),endpoint=False)
     # set the min and maximum values of the plot, to scale the axis
     m = min(0, np.min(np.real(psi)), np.min(np.imag(psi)))
     M = np.max(np.abs(psi))
@@ -140,7 +157,7 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     real_plot = ax.plot(x_data, np.real(psi[:, 0]), label='Real')[0]
     imag_plot = ax.plot(x_data, np.imag(psi[:, 0]), label='Imag')[0]
     abs_plot  = ax.plot(x_data, np.abs(psi[:, 0]), label='Abs')[0]
-    V_plot  =   ax.plot(x_data, V(x_data,0), label='V')[0]
+    # V_plot  =   ax.plot(x_data, V(x_data,0), label='V')[0]
     ax.legend()
 
     # define update function as an internal function (that can access the variables defined before)
@@ -158,37 +175,41 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     ani = animation.FuncAnimation(fig=fig, func=update, frames=duration*frames_per_second, interval=1000/frames_per_second)
     return ani
 
+
+
 # ============================================================================================
 # ============================================================================================
 
 # r=2
 # a=r*np.sqrt(2*np.log(2)); kx=2; x0=1
 
-a=1.5; kx=2; x0=0
+a=1; kx=10; x0=0
 psi0= lambda x: 1/(np.sqrt(2*np.pi *a*a)) *np.exp(-(x*x)/(2*a*a)) *np.exp(1j*kx*(x-x0))
 # psi0= lambda x: 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x)/(2*a*a))*(1-np.exp(-(x*x)/(2*a*a)))*np.exp(1j*kx*(x-x0))       # cercle autour de l'origine
+# psi0 = lambda x: np.exp(-1j*kx*x) 
+
+L=10; Nx=2000; Nt=10000; T=200
+l=1; s=5; V0=0.2; epsi=0.1
 
 
-L=10; Nx=8000; Nt=10000; T=10
-l=0.2; s=5; V0=0.5; epsi=l*0.45
-
-
-# V = lambda x,t : 1*(x>L/2) + 1*(x<-L/2) -1*(x<=L/2)*(x>=-L/2)     # puit d energie
-# V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (effet tunnel)
-V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
+# V = lambda x,t : V0*(x>L/2) + V0*(x<-L/2)                           # puit d energie
+V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (effet tunnel)
+# V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
 # V = lambda x,t : 1/np.abs(x)
 # V = lambda x,t : 1*np.cos(2*np.pi*x/L)
+# V = lambda x,t : V0*x*x
 # V = lambda x,t : 0 * x
 
 # plt.plot(J,V(J,0))
 # plt.show()
 
-psi = dynamics_fft_diss(psi0_fun=psi0,V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
+psi,phi = dynamics_fft_diss(psi0_fun=psi0,V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
 J =np.linspace(-L,L,np.size(psi,0))
 # plt.plot(J,V(J,0))
 # plt.show()
 
 
-anime = plot_psi(psi,L=L, duration=10, frames_per_second=60)
+anime_phi = plot_psi(phi,L=L, duration=10, frames_per_second=20)
+anime_psi = plot_psi(psi,L=L, duration=10, frames_per_second=20)
 plt.show()
 
