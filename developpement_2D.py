@@ -35,7 +35,7 @@ def dynamics_1D(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10,
     
     for i in range(1,Nt):
         ti = dt*i
-        Psi_0T[:,i] = ifft((np.exp(-1j*Kinetic*dt)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_0T[:,i-1]))
+        Psi_0T[:,i] = ifft((np.exp(-1j*Kinetic*dt)) * fft(np.exp(-1j*V_fun(I,ti)*dt) * Psi_0T[:,i-1]))
         print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_0T[:,i]))
     return Psi_0T
 
@@ -169,10 +169,10 @@ def dynamics_2D(psi0_fun=(lambda x,y: np.exp(-(x*x+y*y)**2)), V_fun=(lambda x,y,
 
 # ============================================================================================
 
-r=1
+r=0.5
 a=r*np.sqrt(2*np.log(2)); kx=0; ky=0; x0=0; y0=0
 
-N=400;      L=5
+N=100;      L=20
 Lx=L;   Nx=N;   Ly=L;   Ny=N
 
 
@@ -180,8 +180,8 @@ Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1))
 Ny_2 = int((Ny/2)*(Ny%2==0) + ((Ny-1)/2)*(Ny%2==1))
 
 L = max(Lx,Ly)
-Nt=200;     T=20
-l=np.sqrt(25);      V0=1
+Nt=2000;     T=100
+l=np.sqrt(100);      V0=1
 # psi0 = lambda x,y: np.exp(-a*(x*x + y*y)) *np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))
 # psi0 = lambda x,y:  np.exp(1j*kx*(x-x0)) 
 psi0 = lambda x,y : 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x + y*y)/(2*a*a))*(1-np.exp(-(x*x + y*y)/(2*a*a)))*np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))       # cercle autour de l'origine
@@ -208,9 +208,9 @@ I = np.linspace(-Lx,Lx,Nx); J = np.linspace(-Ly,Ly,Ny).reshape(-1,1); Time = np.
 
 psi,phi, diff_norm, Ener = dynamics_2D(psi0_fun=psi0,V_fun=V, Lx=Lx,Ly=Ly, Nx=Nx, Ny=Ny, T=T, Nt=Nt)
 anime_2D_psi = plot_psi_2D(psi,Lx=Lx,   Ly=Ly, duration=2*T, frames_per_second=60)
-anime_2D_phi = plot_psi_2D(phi,Lx=Lx,   Ly=Ly, duration=2*T, frames_per_second=60)
-anime_1D_y = plot_psi_1D(psi[:,Ny_2,:], L=Lx,  duration=2*T, frames_per_second=60)
-anime_1D_x = plot_psi_1D(psi[Nx_2,:],   L=Ly,  duration=2*T, frames_per_second=60)
+# anime_2D_phi = plot_psi_2D(phi,Lx=Lx,   Ly=Ly, duration=2*T, frames_per_second=60)
+# anime_1D_y = plot_psi_1D(psi[:,Ny_2,:], L=Lx,  duration=2*T, frames_per_second=60)
+# anime_1D_x = plot_psi_1D(psi[Nx_2,:],   L=Ly,  duration=2*T, frames_per_second=60)
 
 plt.show()
 

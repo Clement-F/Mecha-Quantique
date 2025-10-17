@@ -41,6 +41,17 @@ def Kin (Nx):
         print(i)
     return K
 
+def Concentration_de_masse(psi,Nx,L,a,b):
+    l = np.abs(b-a);    occupation  = l/(2*L) 
+    an = int((np.abs(a+L)/(2*L))*Nx) ; bn = int((np.abs(b+L)/(2*L))*Nx)
+    N = np.abs(bn-an)
+    print(l,N,an,bn)
+    psi_l = psi[an:bn]
+    masse = np.sqrt(l/N)*np.linalg.norm(psi_l)
+    return masse
+
+
+
 # ============================================================================================
 # ============================================================================================
 
@@ -63,7 +74,7 @@ def dynamics_Kfft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=1
     Kinetic = 0.5*(2*np.pi/L)**2 *K*K
     K_fft = (Kinetic * np.conjugate(sl.dft(Nx,'sqrtn')))@sl.dft(Nx,'sqrtn')
 
-    I = np.linspace(-L, L,Nx)
+    I = np.linspace(-L, L,Nx,endpoint=False)
     Psi_T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
 
@@ -91,7 +102,7 @@ def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10
     else:   K[Nx_2:] = np.arange(-Nx_2-1,0)
 
     Kinetic = 0.5*(2*np.pi/L)**2 *K*K
-    I = np.linspace(-L, L,Nx)
+    I = np.linspace(-L, L,Nx,endpoint=False)
     Psi_T = np.zeros((Nx,Nt), dtype="complex")
     dt = T/Nt
 
@@ -115,8 +126,7 @@ def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0),
 
     dt = T/Nt; dx = L/Nx
     # Kinetic = (0.5*(2*np.pi/L)**2) *K*K
-    Kinetic = np.fft.fftfreq(Nx, dx)*np.fft.fftfreq(Nx, dx)
-    print(Kinetic)
+    Kinetic = (0.5*(2*np.pi/L)**2) *np.fft.fftfreq(Nx, dx)*np.fft.fftfreq(Nx, dx)
     I = np.linspace(-L, L,Nx,endpoint=False)
     Psi_T = np.zeros((Nx,Nt), dtype="complex")
     Phi_T = np.zeros((Nx,Nt), dtype="complex")
@@ -126,9 +136,9 @@ def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0),
     
     for i in range(1,Nt):
         ti = dt*i
-        Phi_T[:,i] = (np.exp(-1j*Kinetic*dt)) * fft(np.exp(-1j*V_fun(I,ti)*ti) * Psi_T[:,i-1])
+        Phi_T[:,i] = (np.exp(-1j*Kinetic*dt)) * fft(np.exp(-1j*V_fun(I,ti)*dt) * Psi_T[:,i-1])
         Psi_T[:,i] = ifft(Phi_T[:,i])
-        print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_T[:,i]))
+        # print(ti,np.sqrt(L/Nx)*np.linalg.norm(Psi_T[:,i]))
     return Psi_T, Phi_T
 
 
@@ -141,11 +151,11 @@ def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0),
 # L argument is only for x axis labelling
 
 
-def plot_psi(psi, duration=10, frames_per_second=30, L=10):
+def plot_psi(psi, duration=10, frames_per_second=30, L=10, show_potential=False):
     
     fig, ax = plt.subplots()
     t_data = np.linspace(0, 1, np.size(psi, 1)) # 1 is arbitrary here
-    x_data = np.linspace(-L,L,np.size(psi,0),endpoint=False)
+    x_data = np.linspace(-L,L,  np.size(psi,0))
     # set the min and maximum values of the plot, to scale the axis
     m = min(0, np.min(np.real(psi)), np.min(np.imag(psi)))
     M = np.max(np.abs(psi))
@@ -157,7 +167,7 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
     real_plot = ax.plot(x_data, np.real(psi[:, 0]), label='Real')[0]
     imag_plot = ax.plot(x_data, np.imag(psi[:, 0]), label='Imag')[0]
     abs_plot  = ax.plot(x_data, np.abs(psi[:, 0]), label='Abs')[0]
-    # V_plot  =   ax.plot(x_data, V(x_data,0), label='V')[0]
+    if(show_potential):V_plot  =   ax.plot(x_data, V(x_data,0), label='V')[0]
     ax.legend()
 
     # define update function as an internal function (that can access the variables defined before)
@@ -183,18 +193,22 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10):
 # r=2
 # a=r*np.sqrt(2*np.log(2)); kx=2; x0=1
 
-a=1; kx=10; x0=0
+a=1; kx=20; x0=0
 psi0= lambda x: 1/(np.sqrt(2*np.pi *a*a)) *np.exp(-(x*x)/(2*a*a)) *np.exp(1j*kx*(x-x0))
 # psi0= lambda x: 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x)/(2*a*a))*(1-np.exp(-(x*x)/(2*a*a)))*np.exp(1j*kx*(x-x0))       # cercle autour de l'origine
 # psi0 = lambda x: np.exp(-1j*kx*x) 
 
-L=10; Nx=2000; Nt=10000; T=200
-l=1; s=5; V0=0.2; epsi=0.1
+L=10; Nx=1000; Nt=4000; T=100
+l=1; s=2; V0=100; epsi=0.1
 
+
+
+an = int((np.abs(s+L)/(2*L))*Nx) ; bn = int((np.abs(L+L)/(2*L))*Nx)
+print(an,bn)
 
 # V = lambda x,t : V0*(x>L/2) + V0*(x<-L/2)                           # puit d energie
-V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (effet tunnel)
-# V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
+# V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (effet tunnel)
+V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
 # V = lambda x,t : 1/np.abs(x)
 # V = lambda x,t : 1*np.cos(2*np.pi*x/L)
 # V = lambda x,t : V0*x*x
@@ -203,13 +217,43 @@ V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (
 # plt.plot(J,V(J,0))
 # plt.show()
 
+
+# =====================================================
+
+def Jauges(psi,Nx,L,t):
+    dx = 1/Nx
+    I = np.linspace(-L,L,Nx); Kinetic = (0.5*(2*np.pi/L)**2) *np.fft.fftfreq(Nx, dx)*np.fft.fftfreq(Nx, dx)
+    print("norme de psi sur [-L,L] = ", np.sqrt(2*L/Nx)*np.linalg.norm(psi))
+    print("norme de psi en dehors du puit = ", Concentration_de_masse(psi=psi,Nx=Nx,L=L,a=s,b=L)+Concentration_de_masse(psi=psi,Nx=Nx,L=L,a=-s,b=-L) )
+    print("Energie de psi = ",np.sqrt(2*L/Nx)*np.linalg.norm(np.abs( ifft( Kinetic * fft(V(I,t) *psi)))) )
+    print("============================== ",t," ===========================")
+
+# =====================================================
+
+
 psi,phi = dynamics_fft_diss(psi0_fun=psi0,V_fun=V, L=L, Nx=Nx, T=T, Nt=Nt)
-J =np.linspace(-L,L,np.size(psi,0))
-# plt.plot(J,V(J,0))
+J =np.linspace(-L,L,Nx, endpoint=False)
+dt = 1/Nt
+for k in range(0,Nt,10):
+    Jauges(psi[:,k],Nx,L,dt*k)
+
+# P = psi0(J)
+# dx =1/Nx; dt =1/Nt
+# Kinetic = (0.5*(2*np.pi/L)**2) *np.fft.fftfreq(Nx, Nx)*np.fft.fftfreq(Nx, Nx)
+# ti =dt
+# Phi_T = (np.exp(-1j*Kinetic*dt)) * fft(P)
+# Psi_T = ifft(Phi_T)
+# print(P)
+# print("==========================")
+# print(Psi_T)
+# print("==========================")
+# print(Phi_T)
+# plt.plot(J,np.imag(P))
+# plt.plot(J,np.real(P))
 # plt.show()
 
 
-anime_phi = plot_psi(phi,L=L, duration=10, frames_per_second=20)
-anime_psi = plot_psi(psi,L=L, duration=10, frames_per_second=20)
+# anime_phi = plot_psi(phi,L=L, duration=10, frames_per_second=20)
+anime_psi = plot_psi(psi,L=L, duration=10, frames_per_second=20,show_potential=True)
 plt.show()
 

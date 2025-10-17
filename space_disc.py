@@ -167,7 +167,11 @@ IFFp    = Inverse(PPp)          #derive seconde par fourier
 
 #===========================================================================================
 
+Kinetic = np.zeros((Nx), dtype='complex')
+
 Kinetic = -((2*np.pi/L)**2) *K*K                                          #correspond a la matrice Kinetic_energy du sujet
+dx = 1/Nx
+# Kinetic = (0.5*(2*np.pi/L)**2) *np.fft.fftfreq(Nx, dx)*np.fft.fftfreq(Nx, dx)
 K_fft = (Kinetic * np.conjugate(sl.dft(Nx,'sqrtn')))@sl.dft(Nx,'sqrtn') #correspond a la matrice K du sujet
 
 Kfp = np.real(K_fft @F(I))          #laplacien avec K
