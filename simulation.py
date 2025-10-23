@@ -116,16 +116,9 @@ def dynamics_fft(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10
 
 def dynamics_fft_diss(psi0_fun=(lambda x: np.exp(-x**2)), V_fun=(lambda x,t: 0), L=10, Nx=100, T=4, Nt=100):
 
-    Nx_2 = int((Nx/2)*(Nx%2==0) + ((Nx-1)/2)*(Nx%2==1)) 
-
-    # K = np.zeros(Nx)
-    # K[:Nx_2] = np.arange(0,Nx_2); 
-
-    # if(Nx%2==0): K[Nx_2:] = np.arange(-Nx_2,0) 
-    # else:   K[Nx_2:] = np.arange(-Nx_2,1)
 
     dt = T/Nt; dx = L/Nx
-    # Kinetic = (0.5*(2*np.pi/L)**2) *K*K
+    # Kinetic = Kin(Nx)
     Kinetic = (0.5*(2*np.pi/L)**2) *np.fft.fftfreq(Nx, dx)*np.fft.fftfreq(Nx, dx)
     I = np.linspace(-L, L,Nx,endpoint=False)
     Psi_T = np.zeros((Nx,Nt), dtype="complex")
@@ -193,13 +186,13 @@ def plot_psi(psi, duration=10, frames_per_second=30, L=10, show_potential=False)
 # r=2
 # a=r*np.sqrt(2*np.log(2)); kx=2; x0=1
 
-a=1; kx=20; x0=0
-psi0= lambda x: 1/(np.sqrt(2*np.pi *a*a)) *np.exp(-(x*x)/(2*a*a)) *np.exp(1j*kx*(x-x0))
+a=1; kx=1000; x0=-3
+psi0= lambda x: 1/(np.sqrt(2*np.pi *a*a)) *np.exp(-((x-x0)*(x-x0))/(2*a*a)) *np.exp(1j*kx*(x-x0))
 # psi0= lambda x: 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x)/(2*a*a))*(1-np.exp(-(x*x)/(2*a*a)))*np.exp(1j*kx*(x-x0))       # cercle autour de l'origine
 # psi0 = lambda x: np.exp(-1j*kx*x) 
 
-L=10; Nx=1000; Nt=4000; T=100
-l=1; s=2; V0=100; epsi=0.1
+L=20; Nx=2000; Nt=5000; T=50
+l=0.2; s=4; V0=10; epsi=0.1
 
 
 
@@ -207,8 +200,8 @@ an = int((np.abs(s+L)/(2*L))*Nx) ; bn = int((np.abs(L+L)/(2*L))*Nx)
 print(an,bn)
 
 # V = lambda x,t : V0*(x>L/2) + V0*(x<-L/2)                           # puit d energie
-# V = lambda x,t : V0*(x<=s+l )*(x>=s)                                # barriere (effet tunnel)
-V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
+V = lambda x,t : V0*(x<=s+l )*(x>=s) + V0*(x>=-s)*(x<=-s-l)                               # barriere (effet tunnel)
+# V = lambda x,t : barriere_reg(x,t,s,s+l,epsi) + barriere_reg(x,t,-s-l,-s,epsi)                             # barriere (effet tunnel)
 # V = lambda x,t : 1/np.abs(x)
 # V = lambda x,t : 1*np.cos(2*np.pi*x/L)
 # V = lambda x,t : V0*x*x
