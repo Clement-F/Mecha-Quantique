@@ -170,9 +170,9 @@ def dynamics_2D(psi0_fun=(lambda x,y: np.exp(-(x*x+y*y)**2)), V_fun=(lambda x,y,
 # ============================================================================================
 
 r=0.5
-a=r*np.sqrt(2*np.log(2)); kx=0; ky=0; x0=0; y0=0
+a=r*np.sqrt(2*np.log(2)); kx=100; ky=0; x0=0; y0=0
 
-N=100;      L=20
+N=200;      L=20
 Lx=L;   Nx=N;   Ly=L;   Ny=N
 
 
@@ -182,9 +182,9 @@ Ny_2 = int((Ny/2)*(Ny%2==0) + ((Ny-1)/2)*(Ny%2==1))
 L = max(Lx,Ly)
 Nt=2000;     T=100
 l=np.sqrt(100);      V0=1
-# psi0 = lambda x,y: np.exp(-a*(x*x + y*y)) *np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))
+psi0 = lambda x,y: np.exp(-a*(x*x + y*y)) *np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))
 # psi0 = lambda x,y:  np.exp(1j*kx*(x-x0)) 
-psi0 = lambda x,y : 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x + y*y)/(2*a*a))*(1-np.exp(-(x*x + y*y)/(2*a*a)))*np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))       # cercle autour de l'origine
+# psi0 = lambda x,y : 2/(np.sqrt(2*np.pi*a*a)- np.sqrt(np.pi*a*a))* np.exp(-(x*x + y*y)/(2*a*a))*(1-np.exp(-(x*x + y*y)/(2*a*a)))*np.exp(1j*kx*(x-x0)) *np.exp(1j*ky*(y-y0))       # cercle autour de l'origine
 # psi0= lambda x: np.exp(-a*(x-x0)*(x-x0)) *np.exp(1j*k*(x-x0))
 
 
